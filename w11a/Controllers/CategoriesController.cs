@@ -7,58 +7,49 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-using System.Web.Http.ModelBinding;
-using System.Web.Http.OData;
-using System.Web.Http.OData.Routing;
+using System.Web.Http.Description;
 using w11a;
 
 namespace w11a.Controllers
 {
-    /*
-    The WebApiConfig class may require additional changes to add a route for this controller. Merge these statements into the Register method of the WebApiConfig class as applicable. Note that OData URLs are case sensitive.
-
-    using System.Web.Http.OData.Builder;
-    using System.Web.Http.OData.Extensions;
-    using w11a;
-    ODataConventionModelBuilder builder = new ODataConventionModelBuilder();
-    builder.EntitySet<Category>("Categories");
-    config.Routes.MapODataServiceRoute("odata", "odata", builder.GetEdmModel());
-    */
-    public class CategoriesController : ODataController
+    public class CategoriesController : ApiController
     {
         private NorthwindEntities db = new NorthwindEntities();
 
-        // GET: odata/Categories
-        [EnableQuery]
+        // GET: api/Categories
         public IQueryable<Category> GetCategories()
         {
             return db.Categories;
         }
 
-        // GET: odata/Categories(5)
-        [EnableQuery]
-        public SingleResult<Category> GetCategory([FromODataUri] int key)
+        // GET: api/Categories/5
+        [ResponseType(typeof(Category))]
+        public IHttpActionResult GetCategory(int id)
         {
-            return SingleResult.Create(db.Categories.Where(category => category.CategoryID == key));
-        }
-
-        // PUT: odata/Categories(5)
-        public IHttpActionResult Put([FromODataUri] int key, Delta<Category> patch)
-        {
-            Validate(patch.GetEntity());
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            Category category = db.Categories.Find(key);
+            Category category = db.Categories.Find(id);
             if (category == null)
             {
                 return NotFound();
             }
 
-            patch.Put(category);
+            return Ok(category);
+        }
+
+        // PUT: api/Categories/5
+        [ResponseType(typeof(void))]
+        public IHttpActionResult PutCategory(int id, Category category)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != category.CategoryID)
+            {
+                return BadRequest();
+            }
+
+            db.Entry(category).State = EntityState.Modified;
 
             try
             {
@@ -66,7 +57,7 @@ namespace w11a.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!CategoryExists(key))
+                if (!CategoryExists(id))
                 {
                     return NotFound();
                 }
@@ -76,11 +67,12 @@ namespace w11a.Controllers
                 }
             }
 
-            return Updated(category);
+            return StatusCode(HttpStatusCode.NoContent);
         }
 
-        // POST: odata/Categories
-        public IHttpActionResult Post(Category category)
+        // POST: api/Categories
+        [ResponseType(typeof(Category))]
+        public IHttpActionResult PostCategory(Category category)
         {
             if (!ModelState.IsValid)
             {
@@ -90,51 +82,14 @@ namespace w11a.Controllers
             db.Categories.Add(category);
             db.SaveChanges();
 
-            return Created(category);
+            return CreatedAtRoute("DefaultApi", new { id = category.CategoryID }, category);
         }
 
-        // PATCH: odata/Categories(5)
-        [AcceptVerbs("PATCH", "MERGE")]
-        public IHttpActionResult Patch([FromODataUri] int key, Delta<Category> patch)
+        // DELETE: api/Categories/5
+        [ResponseType(typeof(Category))]
+        public IHttpActionResult DeleteCategory(int id)
         {
-            Validate(patch.GetEntity());
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            Category category = db.Categories.Find(key);
-            if (category == null)
-            {
-                return NotFound();
-            }
-
-            patch.Patch(category);
-
-            try
-            {
-                db.SaveChanges();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CategoryExists(key))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return Updated(category);
-        }
-
-        // DELETE: odata/Categories(5)
-        public IHttpActionResult Delete([FromODataUri] int key)
-        {
-            Category category = db.Categories.Find(key);
+            Category category = db.Categories.Find(id);
             if (category == null)
             {
                 return NotFound();
@@ -143,7 +98,7 @@ namespace w11a.Controllers
             db.Categories.Remove(category);
             db.SaveChanges();
 
-            return StatusCode(HttpStatusCode.NoContent);
+            return Ok(category);
         }
 
         protected override void Dispose(bool disposing)
@@ -155,9 +110,9 @@ namespace w11a.Controllers
             base.Dispose(disposing);
         }
 
-        private bool CategoryExists(int key)
+        private bool CategoryExists(int id)
         {
-            return db.Categories.Count(e => e.CategoryID == key) > 0;
+            return db.Categories.Count(e => e.CategoryID == id) > 0;
         }
     }
 }
